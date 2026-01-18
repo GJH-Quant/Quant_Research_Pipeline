@@ -3,7 +3,7 @@
 ## Objective
 Identify and validate **intraday volatility and liquidity regimes** using high-frequency equity data, with an emphasis on **data hygiene, regime persistence, and train/test stability** rather than direct PnL optimization.
 
-This project demonstrates an end-to-end quantitative research workflow appropriate for **junior trader / quantitative trading roles**, focusing on robustness and interpretability instead of backtest-driven overfitting.
+This project demonstrates an end-to-end quantitative research workflow focusing on robustness and interpretability instead of backtest-driven overfitting.
 
 ## Overview
 
