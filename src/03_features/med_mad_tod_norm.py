@@ -17,6 +17,7 @@ def tod_normalization(
     rth_open = out.index.normalize() + pd.to_timedelta(rth_start)
     seconds_since_open = (out.index - rth_open).total_seconds()
     tod_step = pd.to_timedelta(tod_int).total_seconds()
+    
     out["tod_bin"] = (seconds_since_open // tod_step).astype("int64")
 
     stats = out.groupby("tod_bin")[col].agg(
