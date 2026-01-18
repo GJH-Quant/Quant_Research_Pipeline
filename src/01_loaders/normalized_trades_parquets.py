@@ -39,7 +39,7 @@ def trades_to_parquet(in_path: pathlib.Path, out_path: pathlib.Path):
             .astype('category')
         )
 
-        df['price'] = pd.to_numeric(df['price'], errors='coerce').astype('int64', copy=False)
+        df['price'] = pd.to_numeric(df['price'], errors='coerce').astype('float64')
 
         df['size'] = pd.to_numeric(df['size'], errors='coerce').astype('UInt32')
         df['sequence'] = pd.to_numeric(df['sequence'], errors='coerce').astype('UInt32')
