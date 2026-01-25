@@ -70,9 +70,52 @@ score = P(fill) × (1 − P(toxic))
 
 ---
 
-## Key Takeaways
+## Assumptions
 
-- Passive execution quality is highly sensitive to queue position
-- Raw markouts are misleading without fill conditioning
-- Probabilistic gating trades frequency for higher-quality fills
-- Framework emphasizes execution realism over backtest PnL
+This model makes the following explicit assumptions:
+
+### Market Data
+- Uses MBP-1 (top-of-book only) quotes; full order-book depth is not modeled
+- Trade aggressor side is inferred from exchange prints
+- Quotes are assumed stable within each 1-second bin
+
+### Queue Position
+- Queue position is approximated as a fraction of displayed bid size  
+- All displayed size ahead is assumed to have priority
+- Hidden liquidity and midpoint pegs are not modeled
+
+### Fill Logic
+- A bid is considered filled if cumulative sell-at-bid volume exceeds (queue_ahead + own_order_size)
+- Partial fills are treated as full fills
+- Order cancellations, re-queuing, and latency effects are ignored
+
+### Execution & EV
+- **Exit @ Mid** represents an optimistic upper bound on achievable markout
+- **Exit @ Bid** ignores exchange fees, rebates, and transaction costs
+- No explicit inventory or risk limits are modeled
+
+### Modeling
+- Fill and toxicity are modeled independently using XGBoost classifiers
+- Models are trained and evaluated using day-based splits
+- No hyperparameter optimization beyond reasonable defaults
+
+---
+
+## Limitations
+
+- Results shown are from a **single highly liquid equity session (AAPL)**
+- No multi-day PnL or distributional robustness analysis shown here
+- No transaction costs, fees, or rebates applied
+- No depth-aware queue modeling (MBP-10)
+- Exit logic is simplified and does not reflect real-time order management
+
+---
+
+## Intended Use
+
+This framework is designed for:
+- Studying **passive execution quality**
+- Understanding queue position vs adverse selection trade-offs
+- Demonstrating execution-aware modeling techniques
+
+It is **not** intended to represent a production-ready or live-trading strategy
