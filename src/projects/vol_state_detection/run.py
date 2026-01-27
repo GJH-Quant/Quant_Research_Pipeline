@@ -1,54 +1,117 @@
+from __future__ import annotations
+
 import pathlib
 
 from .config import (
-    OUT_PATH,
-    TIME_INT,
-    TRAIN_FRAC,
-    N_STATES,
-    RV_EWMA_SPAN,
-    RV_MIN_PERIODS,
+    # data
+    TRADES_DIR,
+    # bars
+    TIME_INT, BOOL_FILL, RTH_START, RTH_END, PRICE_COL, SIZE_COL,
+    # features
+    HIGH_COL, LOW_COL, LOG_HL_OUT_COL,
+    RV_EWMA_SPAN, RV_MIN_PERIODS, RV_OUT_COL,
+    SESSION_COL,
+    # hmm
+    TRAIN_FRAC, N_STATES, HMM_COV_TYPE, HMM_N_ITER, HMM_RANDOM_STATE,
+    STATE_COL_RV, STATE_COL_HL,
 )
 
-from src.projects.vol_state_detection.bars import create_time_bars, parquet_to_df
-from src.projects.vol_state_detection.features import add_log_hl_vol, add_ewma_realized_vol
-from src.projects.vol_state_detection.hmm import fit_hmm_intraday, train_test_split_by_session, hmm_summary_stats
+from .bars import parquet_to_df, create_time_bars
+from .features import build_vol_features
+from .hmm import train_test_split_by_session, fit_hmm_intraday, hmm_summary_stats
 
-def main():
-    trades_path = pathlib.Path(OUT_PATH)  # already a Path, but safe
+# =========================
+# RUNTIME INPUTS (keep out of config)
+# =========================
+DATE_SLICE = ("2025-01-01", "2025-12-20")
 
-    trades = parquet_to_df(trades_path)
-    trades = trades.loc["2025-01-01":"2025-12-20"]
 
-    bars = create_time_bars(trades, time_int=TIME_INT, bool_fill=True)
+def main() -> dict:
+    # -------------------------
+    # Load trades
+    # -------------------------
+    trades = parquet_to_df(pathlib.Path(TRADES_DIR))
+    if DATE_SLICE is not None:
+        trades = trades.loc[DATE_SLICE[0]:DATE_SLICE[1]]
 
-    bars = add_log_hl_vol(bars)
-    bars = add_ewma_realized_vol(bars, span=RV_EWMA_SPAN, min_periods=RV_MIN_PERIODS)
+    # -------------------------
+    # Build RTH time bars
+    # -------------------------
+    bars = create_time_bars(
+        trades,
+        time_int=TIME_INT,
+        bool_fill=BOOL_FILL,
+        rth_start=RTH_START,
+        rth_end=RTH_END,
+        price_col=PRICE_COL,
+        size_col=SIZE_COL,
+    )
 
-    train, test = train_test_split_by_session(bars, train_frac=TRAIN_FRAC)
+    # -------------------------
+    # Build vol features
+    # -------------------------
+    bars = build_vol_features(
+        bars,
+        high_col=HIGH_COL,
+        low_col=LOW_COL,
+        log_hl_out_col=LOG_HL_OUT_COL,
+        logret_col="log_ret",
+        session_col=SESSION_COL,
+        rv_span=RV_EWMA_SPAN,
+        rv_min_periods=RV_MIN_PERIODS,
+        rv_out_col=RV_OUT_COL,
+    )
 
+    # -------------------------
+    # Train/Test split (session aware)
+    # -------------------------
+    train, test = train_test_split_by_session(
+        bars,
+        train_frac=TRAIN_FRAC,
+        session_col=SESSION_COL,
+    )
+
+    # -------------------------
+    # HMM on RV
+    # -------------------------
     print("\n" + "=" * 60)
-    print("HMM REGIMES ON: rv_ewma")
+    print(f"HMM REGIMES ON: {RV_OUT_COL}")
     print("=" * 60)
 
     df_rv = fit_hmm_intraday(
-        bars, train, test,
-        col="rv_ewma",
+        bars,
+        train,
+        test,
+        col=RV_OUT_COL,
         states=N_STATES,
-        state_col="states_rv",
+        session_col=SESSION_COL,
+        state_col=STATE_COL_RV,
+        covariance_type=HMM_COV_TYPE,
+        n_iter=HMM_N_ITER,
+        random_state=HMM_RANDOM_STATE,
     )
-    hmm_summary_stats(df_rv, feature_col="rv_ewma", states_col="states_rv")
+    hmm_summary_stats(df_rv, feature_col=RV_OUT_COL, states_col=STATE_COL_RV, session_col=SESSION_COL)
 
+    # -------------------------
+    # HMM on log(H/L)
+    # -------------------------
     print("\n" + "=" * 60)
-    print("HMM REGIMES ON: log_hl")
+    print(f"HMM REGIMES ON: {LOG_HL_OUT_COL}")
     print("=" * 60)
 
     df_hl = fit_hmm_intraday(
-        bars, train, test,
-        col="log_hl",
+        bars,
+        train,
+        test,
+        col=LOG_HL_OUT_COL,
         states=N_STATES,
-        state_col="states_hl",
+        session_col=SESSION_COL,
+        state_col=STATE_COL_HL,
+        covariance_type=HMM_COV_TYPE,
+        n_iter=HMM_N_ITER,
+        random_state=HMM_RANDOM_STATE,
     )
-    hmm_summary_stats(df_hl, feature_col="log_hl", states_col="states_hl")
+    hmm_summary_stats(df_hl, feature_col=LOG_HL_OUT_COL, states_col=STATE_COL_HL, session_col=SESSION_COL)
 
     return {"bars": bars, "rv_states": df_rv, "hl_states": df_hl}
 

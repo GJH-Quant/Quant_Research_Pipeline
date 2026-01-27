@@ -1,18 +1,16 @@
 from __future__ import annotations
-import pandas as pd
+
+from typing import Tuple
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from hmmlearn.hmm import GaussianHMM
-from typing import Tuple
 
-# ============================================
-# TRAIN / TEST SPLIT
-# ============================================
 
 def train_test_split_by_session(
     bars: pd.DataFrame,
-    train_frac: float = 0.7,
-    session_col: str = "session_date",
+    train_frac: float,
+    session_col: str,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     
     sessions = (
@@ -28,12 +26,8 @@ def train_test_split_by_session(
 
     train_df = bars[bars[session_col].isin(train_sessions)].copy()
     test_df = bars[bars[session_col].isin(test_sessions)].copy()
-
     return train_df, test_df
 
-# ============================================
-# FIT HMM
-# ============================================
 
 def fit_hmm_intraday(
     bars: pd.DataFrame,
@@ -41,10 +35,11 @@ def fit_hmm_intraday(
     test: pd.DataFrame,
     col: str,
     states: int,
-    train_frac: float = 0.7,
-    session_col: str = "session_date",
-    state_col: str = "states",
-    random_state: int = 42,
+    session_col: str,
+    state_col: str,
+    covariance_type: str,
+    n_iter: int,
+    random_state: int,
 ) -> pd.DataFrame:
     
     out = bars.copy()
@@ -67,8 +62,8 @@ def fit_hmm_intraday(
 
     model = GaussianHMM(
         n_components=states,
-        covariance_type="diag",
-        n_iter=300,
+        covariance_type=covariance_type,
+        n_iter=n_iter,
         random_state=random_state,
     )
 
@@ -84,41 +79,40 @@ def fit_hmm_intraday(
 
     return out
 
-# ============================================
-# HMM SUMMARY STATS
-# ============================================
 
 def hmm_summary_stats(
-        bars: pd.DataFrame,
-        feature_col: str,
-        states_col: str,
-):
-    
-    states_count = bars[states_col].value_counts()
-    print('Value Counts of Regime States:')
+    bars: pd.DataFrame,
+    feature_col: str,
+    states_col: str,
+    session_col: str,
+    inactive_col: str = "inactive",
+    volume_col: str = "volume",
+    logret_col: str = "log_ret",
+) -> None:
+    states_count = bars[states_col].value_counts(dropna=True)
+    print("Value Counts of Regime States:")
     print(states_count)
 
-    xr = bars[[states_col, "session_date"]].dropna(subset=[states_col]).copy()
+    xr = bars[[states_col, session_col]].dropna(subset=[states_col]).copy()
     xr[states_col] = xr[states_col].astype("Int64")
 
     new_run = (
-        xr[states_col].ne(xr[states_col].shift(1)) |
-        xr["session_date"].ne(xr["session_date"].shift(1))
+        xr[states_col].ne(xr[states_col].shift(1))
+        | xr[session_col].ne(xr[session_col].shift(1))
     )
 
     run_id = new_run.cumsum()
     run_len = xr.groupby(run_id).size()
     run_state = xr.groupby(run_id)[states_col].first()
-
     avg_run_len = run_len.groupby(run_state).mean()
 
-    stats = {
-        'inactive_rate': bars.groupby(states_col)['inactive'].mean(),
-        'avg_volume': bars.groupby(states_col)['volume'].mean(),
-        'avg_std': bars.groupby(states_col)['log_ret'].std(),
-        'avg_run_len_bars': avg_run_len
-    }
-
-    print('Summary Stats')
-    print('-' * 40)
-    print(stats)
+    print("Summary Stats")
+    print("-" * 40)
+    print("inactive_rate:")
+    print(bars.groupby(states_col)[inactive_col].mean())
+    print("\navg_volume:")
+    print(bars.groupby(states_col)[volume_col].mean())
+    print("\navg_std(log_ret):")
+    print(bars.groupby(states_col)[logret_col].std())
+    print("\navg_run_len_bars:")
+    print(avg_run_len)

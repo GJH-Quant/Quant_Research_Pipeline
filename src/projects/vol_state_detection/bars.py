@@ -1,35 +1,28 @@
 from __future__ import annotations
+
+import pathlib
 import numpy as np
 import pandas as pd
-import pathlib
 
-# =========================
-# PARQUETS --> DATAFRAME
-# =========================
 
 def parquet_to_df(in_path: pathlib.Path) -> pd.DataFrame:
-
     paths = sorted(in_path.glob("*.parquet"))
     if not paths:
         raise FileNotFoundError(f"No parquet files found in: {in_path}")
 
     dfs = [pd.read_parquet(p) for p in paths]
     out = pd.concat(dfs, axis=0).sort_index()
-
     return out
 
-# =========================
-# TIME BARS (RTH-anchored)
-# =========================
 
 def create_time_bars(
     df: pd.DataFrame,
     time_int: str,
     bool_fill: bool,
-    rth_start: str = "09:30:00",
-    rth_end: str = "16:00:00",
-    price_col: str = "price",
-    size_col: str = "size",
+    rth_start: str,
+    rth_end: str,
+    price_col: str,
+    size_col: str,
 ) -> pd.DataFrame:
 
     if df.empty:
@@ -96,20 +89,20 @@ def create_time_bars(
             bars = bars.dropna(subset=["close"])
             bars["inactive"] = False
 
-        bars['ret'] = bars['close'].pct_change(fill_method=None)
-        bars['log_ret'] = np.log(bars['close']).diff()
+        # returns
+        bars["ret"] = bars["close"].pct_change(fill_method=None)
+        bars["log_ret"] = np.log(bars["close"]).diff()
 
         return bars
 
     bars = x.groupby(session_key, group_keys=False).apply(one_session)
 
-    # ---- HARD GUARD: empty output ----
     if bars.empty:
         print("[SANITY] WARNING: no bars were produced (bars is empty).")
-        print("         Likely no trades after symbol/date/RTH filters.")
+        print("         Likely no trades after filters.")
         return bars
 
-    # --- sanity prints ---
+    # sanity prints
     bars_per_day = bars.groupby(bars.index.normalize()).size()
     label = "filled" if bool_fill else "unfilled"
     print(f"[SANITY] bars/day summary ({label}):")
@@ -119,16 +112,16 @@ def create_time_bars(
     rth_end_t = pd.to_timedelta(rth_end)
     bar_times = bars.index - bars.index.normalize()
     outside_rth = (bar_times < rth_start_t) | (bar_times >= rth_end_t)
-    n_outside = int(outside_rth.sum())
 
-    if n_outside:
-        print(f"[SANITY] WARNING: {n_outside} bars outside RTH")
+    if int(outside_rth.sum()):
+        print(f"[SANITY] WARNING: {int(outside_rth.sum())} bars outside RTH")
         print(bars.loc[outside_rth].head(5))
     else:
         print("[SANITY] OK: no bars outside RTH")
 
     if "inactive" in bars.columns:
         print(f"[SANITY] inactive rate: {bars['inactive'].mean():.2%}")
+
     frac_h_eq_l = float((bars["high"] == bars["low"]).mean())
     print(f"[SANITY] fraction(high==low): {frac_h_eq_l:.2%}")
 
