@@ -1,40 +1,35 @@
-# config.py
-from __future__ import annotations
+# config.py 
+from __future__ import annotations 
+import pathlib
+# ========================= 
+# TIME BARS (RTH) 
+# ========================= 
+TRADES_PATH = pathlib.Path(r"D:\Quant_Research_Pipeline\data\01_normalized\equities\aapl\trades")
+DATE_SLICE = ('2025-01-01','2025-12-20') 
 
-# =========================
-# TIME BARS (RTH)
-# =========================
-TIME_INT = "60s"
-BOOL_FILL = True
+TIME_INT    = '2s' 
+BOOL_FILL   = True
 
-RTH_START = "09:30:00"
+RTH_START = "09:30:00" 
 RTH_END   = "16:00:00"
 
-PRICE_COL = "price"
-SIZE_COL  = "size"
+PRICE_COL = "price" 
+SIDE_COL  = "side" 
+SIZE_COL  = "size" 
 
-# =========================
-# BURST FEATURES
-# =========================
-BURST_FEATURE_COL = "volume"   # in bars after resample (volume, dollar, n_trades, etc.)
-TOD_COL = "tod_bin"
+# ========================= 
+# TOD BINNING (decoupled) 
+# ========================= 
+TOD_INT = "60s" 
 
-# Rolling percentile burst
-PCT_LOOKBACK = 60
-PCT_MIN_PERIODS = 20
-PCT_Q = 0.995
-PCT_EPS = 1e-12
-PCT_OUT_COL = "burst_pct_score"
+# ========================= 
+# BURST FEATURES 
+# ========================= 
+PCT_LOOKBACK = 10
+PCT_EPS      = 1e-12 
 
-# Median/MAD burst
-MAD_LOOKBACK = 60
-MAD_MIN_PERIODS = 20
-MAD_FLOOR = 1e-6
-MAD_SCALE = 1.4826
-MAD_OUT_COL = "burst_mad_z"
+MAD_LOOKBACK = 10 
+MAD_FLOOR    = 1e-6 
+MAD_SCALE    = 1.4826 
 
-# =========================
-# SANITY (optional thresholds)
-# =========================
-PCT_APPROX_EVENT_SCORE = 1.0   # event ~ score>1 => log1p(score)>log1p(1)
-MAD_EVENT_Z = 3.0              # typical robust z threshold
+VERBOSE = True
