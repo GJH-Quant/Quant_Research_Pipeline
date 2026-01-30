@@ -27,7 +27,7 @@ Measures how unusual current volume is *relative to its normal behavior at the s
 
 **Interpretation:**
 - Values near 0 → normal activity
-- >2 → unusually high volume
+- 2 → unusually high volume
 - Negative values → suppressed liquidity
 
 ---
