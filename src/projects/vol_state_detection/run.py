@@ -1,65 +1,61 @@
+# run.py
 from __future__ import annotations
-
 import pathlib
+import numpy as np
 
 from .config import (
-    # data
-    TRADES_DIR,
     # bars
-    TIME_INT, BOOL_FILL, RTH_START, RTH_END, PRICE_COL, SIZE_COL,
-    # features
-    HIGH_COL, LOW_COL, LOG_HL_OUT_COL,
-    RV_EWMA_SPAN, RV_MIN_PERIODS, RV_OUT_COL,
-    SESSION_COL,
-    # hmm
-    TRAIN_FRAC, N_STATES, HMM_COV_TYPE, HMM_N_ITER, HMM_RANDOM_STATE,
-    STATE_COL_RV, STATE_COL_HL,
+    TRADES_PATH, DATE_SLICE, TIME_INT, BOOL_FILL, RTH_START, RTH_END, PRICE_COL, SIDE_COL, SIZE_COL,
+    # h/l
+    HIGH_COL, LOW_COL, LOG_RET_COL, SESSION_COL,
+    RV_EWMA_SPAN, RV_MIN_PERIODS, RV_OUT_COL, TRAIN_FRAC, LOG_HL_OUT_COL,
+    N_STATES, HMM_COV_TYPE, HMM_N_ITER, HMM_RANDOM_STATE,
+    STATE_COL_HL, STATE_COL_RV,
 )
 
-from .bars import parquet_to_df, create_time_bars
-from .features import build_vol_features
-from .hmm import train_test_split_by_session, fit_hmm_intraday, hmm_summary_stats
+from src.loaders.parquets_to_df import parquet_to_df
+from src.bars.create_time_bars_w_flow import create_time_bars_w_flow
+from src.features.ewma_realized_vol import add_ewma_realized_vol
+from src.features.log_high_low_vol import add_log_hl_vol
+from src.labels.train_test_split import train_test_split_by_session
+from src.regimes.fit_1D_hmm import fit_hmm_intraday_1d
+from src.regimes.hmm_summary_stats import hmm_summary_stats
 
-# =========================
-# RUNTIME INPUTS (keep out of config)
-# =========================
-DATE_SLICE = ("2025-01-01", "2025-12-20")
-
-
-def main() -> dict:
-    # -------------------------
-    # Load trades
-    # -------------------------
-    trades = parquet_to_df(pathlib.Path(TRADES_DIR))
-    if DATE_SLICE is not None:
-        trades = trades.loc[DATE_SLICE[0]:DATE_SLICE[1]]
+def main():
+    
+    trades = parquet_to_df(TRADES_PATH)
+    trades = trades.loc[DATE_SLICE[0]:DATE_SLICE[1]]
 
     # -------------------------
     # Build RTH time bars
     # -------------------------
-    bars = create_time_bars(
+    bars = create_time_bars_w_flow(
         trades,
         time_int=TIME_INT,
         bool_fill=BOOL_FILL,
         rth_start=RTH_START,
         rth_end=RTH_END,
         price_col=PRICE_COL,
+        side_col=SIDE_COL,
         size_col=SIZE_COL,
     )
 
     # -------------------------
     # Build vol features
     # -------------------------
-    bars = build_vol_features(
+    bars = add_log_hl_vol(
         bars,
         high_col=HIGH_COL,
         low_col=LOW_COL,
-        log_hl_out_col=LOG_HL_OUT_COL,
-        logret_col="log_ret",
+    )
+
+    bars = add_ewma_realized_vol(
+        bars,
+        logret_col=LOG_RET_COL,
         session_col=SESSION_COL,
-        rv_span=RV_EWMA_SPAN,
-        rv_min_periods=RV_MIN_PERIODS,
-        rv_out_col=RV_OUT_COL,
+        span=RV_EWMA_SPAN,
+        min_periods=RV_MIN_PERIODS,
+        out_col=RV_OUT_COL,
     )
 
     # -------------------------
@@ -78,7 +74,7 @@ def main() -> dict:
     print(f"HMM REGIMES ON: {RV_OUT_COL}")
     print("=" * 60)
 
-    df_rv = fit_hmm_intraday(
+    df_rv, rv_model, rv_scaler = fit_hmm_intraday_1d(
         bars,
         train,
         test,
@@ -90,6 +86,7 @@ def main() -> dict:
         n_iter=HMM_N_ITER,
         random_state=HMM_RANDOM_STATE,
     )
+
     hmm_summary_stats(df_rv, feature_col=RV_OUT_COL, states_col=STATE_COL_RV, session_col=SESSION_COL)
 
     # -------------------------
@@ -99,7 +96,7 @@ def main() -> dict:
     print(f"HMM REGIMES ON: {LOG_HL_OUT_COL}")
     print("=" * 60)
 
-    df_hl = fit_hmm_intraday(
+    df_hl, hl_model, hl_scaler = fit_hmm_intraday_1d(
         bars,
         train,
         test,
@@ -111,9 +108,8 @@ def main() -> dict:
         n_iter=HMM_N_ITER,
         random_state=HMM_RANDOM_STATE,
     )
-    hmm_summary_stats(df_hl, feature_col=LOG_HL_OUT_COL, states_col=STATE_COL_HL, session_col=SESSION_COL)
 
-    return {"bars": bars, "rv_states": df_rv, "hl_states": df_hl}
+    hmm_summary_stats(df_hl, feature_col=LOG_HL_OUT_COL, states_col=STATE_COL_HL, session_col=SESSION_COL)
 
 
 if __name__ == "__main__":
