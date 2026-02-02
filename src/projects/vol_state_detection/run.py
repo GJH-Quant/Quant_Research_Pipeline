@@ -21,8 +21,8 @@ from src.labels.train_test_split import train_test_split_by_session
 from src.regimes.fit_1D_hmm import fit_hmm_intraday_1d
 from src.regimes.hmm_summary_stats import hmm_summary_stats
 
-def main():
-    
+def main(return_df: bool = False):
+
     trades = parquet_to_df(TRADES_PATH)
     trades = trades.loc[DATE_SLICE[0]:DATE_SLICE[1]]
 
@@ -110,7 +110,13 @@ def main():
     )
 
     hmm_summary_stats(df_hl, feature_col=LOG_HL_OUT_COL, states_col=STATE_COL_HL, session_col=SESSION_COL)
-
+    
+    if return_df:
+        # Return ONLY the main features + states, indexed by timestamp
+        out = df_rv[[RV_OUT_COL, STATE_COL_RV]].copy()
+        out[LOG_HL_OUT_COL] = df_hl[LOG_HL_OUT_COL]
+        out[STATE_COL_HL]   = df_hl[STATE_COL_HL]
+        return out.sort_index()
 
 if __name__ == "__main__":
     main()
