@@ -67,7 +67,7 @@ def main():
         lookback_days=PCT_LOOKBACK,
         eps=PCT_EPS,
         verbose=VERBOSE,
-    )
+    )    
 
 if __name__ == '__main__':
     main()
