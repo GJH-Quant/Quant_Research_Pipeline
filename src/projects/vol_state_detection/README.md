@@ -4,7 +4,7 @@
 
 Builds 60s RTH bars from trade prints, computes two intraday volatility features, and fits **1D Gaussian HMM** regimes for each feature with a clean **session-based train/test split** (no lookahead across days).
 
-### What it does
+### What the script does
 1. Load normalized trades (parquets)
 2. Create **60s RTH bars** with basic aggressive-flow fields (buy/sell/neutral)
 3. Compute:
