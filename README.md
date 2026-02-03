@@ -2,7 +2,7 @@
 
 A modular quantitative research framework focused on intraday market microstructure,
 order-book dynamics, and regime detection using high-resolution Databento data
-(trades, MBP-10).
+(Trades, MBP-1, MBP-10).
 
 The goal of this repository is to support systematic research, feature engineering,
 and strategy development for intraday trading and execution-alpha style strategies,
@@ -15,15 +15,12 @@ with an emphasis on robustness, reproducibility, and clean data pipelines.
 - Order-book–based features (spread, depth, imbalance, OFI)
 - Volatility and regime detection
 - Non-directional and conditional-distribution strategies
-- Research pipelines designed to transition cleanly into production
 
 ---
 
 ## Repository Structure
 
 ### Data & Normalization
-- `data/`  
-  Raw and normalized market data (Databento DBN → Parquet)
 
 - `src/loaders/`  
   Utilities for loading, cleaning, validating, and converting raw market data  
@@ -44,18 +41,6 @@ with an emphasis on robustness, reproducibility, and clean data pipelines.
 
 - `src/labels/`  
   Forward return, volatility, and distribution-shape labels
-
----
-
-### Regimes, Models, and Backtests
-- `src/regimes/`  
-  Market segmentation models (e.g., HMM-based, state classification)
-
-- `src/models/`  
-  Predictive models and classifiers built on engineered features
-
-- `src/backtests/`  
-  Strategy evaluation, performance attribution, and robustness checks
 
 ---
 
