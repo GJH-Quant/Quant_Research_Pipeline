@@ -1,5 +1,5 @@
 # ====================================
-# FIT MBP-1 XGBOOST CLASSIFIER
+# FIT BBO XGBOOST CLASSIFIER
 # ====================================
 
 from xgboost import XGBClassifier
@@ -11,6 +11,7 @@ import numpy as np
 def fit_baseline_bbo_xgb(
     bars: pd.DataFrame,
     label_col: str,
+    feature_cols: list[str],
     train_frac: float = 0.7,
     random_state: int = 42,
     n_estimators: int = 400,
@@ -23,26 +24,15 @@ def fit_baseline_bbo_xgb(
     n_jobs: int = -1,
     tree_method: str = "hist",
 ):
-
-    baseline_features = [
-        # direction
-        "microprice_diff",
-        "imbalance",
-        # liquidity
-        "spread",
-        # activity
-        "bbo_updates",
-    ]
-
     train, test = train_test_split_by_session(
         bars, train_frac=train_frac, session_col="session_date"
     )
 
-    X_train = train[baseline_features].astype("float32")
-    X_test = test[baseline_features].astype("float32")
+    X_train = train[feature_cols].astype("float32")
+    X_test  = test[feature_cols].astype("float32")
 
     y_train = train[label_col].astype("int8").to_numpy()
-    y_test = test[label_col].astype("int8").to_numpy()
+    y_test  = test[label_col].astype("int8").to_numpy()
 
     pos = float(np.sum(y_train == 1))
     neg = float(np.sum(y_train == 0))
@@ -65,12 +55,12 @@ def fit_baseline_bbo_xgb(
 
     model.fit(X_train, y_train)
 
-    p_test = model.predict_proba(X_test)[:, 1]
-    p_test = pd.Series(p_test, index=test.index, name=f"p_{label_col}")
+    p_test = pd.Series(
+        model.predict_proba(X_test)[:, 1],
+        index=test.index,
+        name=f"p_{label_col}",
+    )
 
-    # -----------------------------
-    # Metrics
-    # -----------------------------
     metrics = {
         "train_rows": float(len(train)),
         "test_rows": float(len(test)),
