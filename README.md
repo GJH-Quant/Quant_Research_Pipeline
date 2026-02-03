@@ -30,17 +30,16 @@ with an emphasis on robustness, reproducibility, and clean data pipelines.
 
 ### Feature Engineering
 - `src/bars/`  
-  Bar construction modules:
-  - time bars
-  - volume bars
-  - dollar bars
-  - signed-imbalance bars
+  Bar construction modules
 
 - `src/features/`  
   Feature generation from bars and order-book snapshots
 
 - `src/labels/`  
   Forward return, volatility, and distribution-shape labels
+
+- `src/models/`  
+  XGBOOST classifiers, etc
 
 ---
 
