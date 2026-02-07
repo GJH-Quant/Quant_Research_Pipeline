@@ -10,7 +10,7 @@ from src.loaders.parquets_to_df import parquet_to_df
 from src.bars.create_time_bars_w_bbo import create_time_bars_w_bbo
 from src.features.med_mad_tod_norm import add_med_mad_norm
 from src.features.percentile_burst import add_rolling_percentile_burst
-from src.labels.tail_label import build_tail_labels
+from src.labels.tail_label import build_tail_labels_session_aware
 from src.projects.vol_state_detection.run import main as run_vol_states
 from src.models.bbo_xgboost_baseline import fit_baseline_bbo_xgb
 
@@ -29,7 +29,7 @@ SPREAD_MULT    = 1.5
 TRAIN_FRAC     = 0.70
 
 # Selection quantile for PnL proxy (top-probability tail)
-Q_PROBA_THRESH = 0.80
+Q_PROBA_THRESH = 0.95
 
 # =========================
 # PIPELINE
@@ -117,7 +117,7 @@ def main():
 
     bars = add_features(bars)
 
-    bars = build_tail_labels(bars, horizon=HORIZON, spread_mult=SPREAD_MULT)
+    bars = build_tail_labels_session_aware(bars, horizon=HORIZON, spread_mult=SPREAD_MULT)
     bars = bars.dropna(subset=["y_up", "y_down"])
 
     feature_cols = [
@@ -178,7 +178,6 @@ def main():
             print(f"{k:>16}: {v}")
 
     return model, metrics, p_test, out, out_gated_dict
-
 
 if __name__ == "__main__":
     main()
